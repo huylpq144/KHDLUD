@@ -74,24 +74,38 @@ def is_product_id_in_list(product_id):
         print(f"Lỗi khi đọc file unique_product_ids.txt: {str(e)}")
         return False
 
-def setup_driver(headless=False):  # Changed default to False
+def setup_driver(headless=True):  # Default to headless mode
     """Setup and return a Chrome webdriver with appropriate options"""
     chrome_options = Options()
     
-    if headless:
-        chrome_options.add_argument("--headless")  # Run in headless mode (no UI)
-    
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
+    # Always run headless in Docker environment
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--disable-gpu")  # Disable GPU acceleration
+    chrome_options.add_argument("--no-sandbox")  # Required in Docker
+    chrome_options.add_argument("--disable-dev-shm-usage")  # Overcome limited resource
+    chrome_options.add_argument("--disable-extensions")  # Disable extensions
+    chrome_options.add_argument("--disable-setuid-sandbox")  # Disable setuid sandbox
     chrome_options.add_argument(f"user-agent={HEADERS['User-Agent']}")
     
     # Add some preferences that make detection harder
     chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    chrome_options.add_experimental_option('useAutomationExtension', False)
+    chrome_options.add_experimental_option("useAutomationExtension", False)
     
-    # Use webdriver-manager to handle driver installation
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=chrome_options)
+    try:
+        # Check if running in a Docker environment - use installed chromedriver
+        if os.path.exists("/.dockerenv"):
+            print("Running in Docker environment, using installed chromedriver")
+            driver = webdriver.Chrome(options=chrome_options)
+        else:
+            # Use webdriver-manager to handle driver installation for local development
+            print("Running in local environment, using webdriver-manager")
+            service = Service(ChromeDriverManager().install())
+            driver = webdriver.Chrome(service=service, options=chrome_options)
+    except Exception as e:
+        print(f"Error setting up Chrome driver: {e}")
+        # Fallback to direct path in Docker
+        print("Falling back to direct chromedriver path")
+        driver = webdriver.Chrome(executable_path="/usr/bin/chromedriver", options=chrome_options)
     
     # Set window size to typical desktop
     driver.set_window_size(1920, 1080)
