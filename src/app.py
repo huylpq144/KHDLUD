@@ -145,21 +145,31 @@ def main():
                     
                     # Gọi hàm scrape để lấy thông tin sản phẩm đầy đủ
                     product_data = get_product_info(product_url)
+
+                    # Thêm kiểm tra kết quả scrape
+                    if product_data and "error" not in product_data and product_data.get("title") != "Title not found":
+                        # Lưu dữ liệu vào session state để sử dụng sau
+                        st.session_state.product_data = product_data
+                        # ... tiếp tục xử lý như bình thường
+                                            # Tạo context từ reviews
+                        reviews_context = "Dưới đây là các đánh giá của người dùng về sản phẩm:\n\n"
+                        for i, review in enumerate(product_data.get("reviews", [])):
+                            reviews_context += f"Review #{i+1}:\n"
+                            reviews_context += f"- Tiêu đề: {review.get('title', 'Không có tiêu đề')}\n"
+                            reviews_context += f"- Người đánh giá: {review.get('author', 'Ẩn danh')}\n"
+                            reviews_context += f"- Nội dung: {review.get('text', 'Không có nội dung')}\n"
+                            reviews_context += f"- Ngày: {review.get('date', 'Không rõ ngày')}\n\n"
+                        
+                        # Lưu reviews_context vào product_data để dùng sau này
+                        st.session_state.product_data["reviews_context"] = reviews_context
+                    else:
+                        # Hiển thị thông báo lỗi và không rerun
+                        st.error("Không thể lấy thông tin sản phẩm. Vui lòng thử lại.")
+                        # Không gọi st.rerun() ở đây
+                        return
+                
                     
-                    # Lưu dữ liệu vào session state để sử dụng sau
-                    st.session_state.product_data = product_data
-                    
-                    # Tạo context từ reviews
-                    reviews_context = "Dưới đây là các đánh giá của người dùng về sản phẩm:\n\n"
-                    for i, review in enumerate(product_data.get("reviews", [])):
-                        reviews_context += f"Review #{i+1}:\n"
-                        reviews_context += f"- Tiêu đề: {review.get('title', 'Không có tiêu đề')}\n"
-                        reviews_context += f"- Người đánh giá: {review.get('author', 'Ẩn danh')}\n"
-                        reviews_context += f"- Nội dung: {review.get('text', 'Không có nội dung')}\n"
-                        reviews_context += f"- Ngày: {review.get('date', 'Không rõ ngày')}\n\n"
-                    
-                    # Lưu reviews_context vào product_data để dùng sau này
-                    st.session_state.product_data["reviews_context"] = reviews_context
+
                 
                 # Cập nhật progress bar
                 progress_bar.progress(60)

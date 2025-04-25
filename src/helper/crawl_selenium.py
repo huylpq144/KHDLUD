@@ -248,62 +248,73 @@ def get_product_info(url):
     finally:
         driver.quit()  # Close the browser
         del driver  # Explicitly delete the driver object
-        gc.collect()  # Force garbage collection
+        gc.collect()
 
 def get_basic_product_info(url):
     """Extract only basic product information (title, price, rating, description) from an Amazon product page"""
-    driver = setup_driver(headless=True)
-    try:
-        driver.get(url)
-        time.sleep(random.uniform(2, 4))  # Giảm thời gian chờ
-        
-        # Xử lý CAPTCHA nếu xuất hiện
-        if solve_captcha(driver):
-            print("🔄 Continuing after captcha solution...")
-            time.sleep(2)
+    max_retries = 2
+    for attempt in range(max_retries):
+        driver = None
+        try:
+            print(f"Attempt {attempt+1}: Getting basic product info for {url}")
+            driver = setup_driver(headless=True)
+            driver.get(url)
+            
+            # Tăng thời gian chờ trong môi trường Docker
+            wait_time = 5 if os.path.exists("/.dockerenv") else 3
+            time.sleep(random.uniform(wait_time, wait_time + 2))
+            
+            # Xử lý CAPTCHA nếu xuất hiện
+            if solve_captcha(driver):
+                print("🔄 Continuing after captcha solution...")
+                time.sleep(3)  # Tăng thời gian chờ sau khi giải captcha
 
-        # Bộ từ điển chỉ chứa thông tin cơ bản
-        product = {}
-        
-        # Lấy tiêu đề sản phẩm
-        try:
-            title_element = driver.find_element(By.ID, "productTitle")
-            product["title"] = title_element.text.strip()
-        except:
-            product["title"] = "Title not found"
-        
-        # Lấy giá sản phẩm
-        try:
-            price_element = driver.find_element(By.CSS_SELECTOR, ".a-offscreen")
-            product["price"] = price_element.get_attribute("innerText")
-        except:
-            product["price"] = "Price not found"
-        
-        # Lấy đánh giá trung bình
-        try:
-            rating_element = driver.find_element(By.CSS_SELECTOR, ".a-icon-alt")
-            product["rating"] = rating_element.get_attribute("innerText")
-        except:
-            product["rating"] = "Rating not found"
-        
-        # Lấy số lượng đánh giá
-        try:
-            review_count_element = driver.find_element(By.ID, "acrCustomerReviewText")
-            product["review_count"] = review_count_element.text
-        except:
-            product["review_count"] = "Review count not found"
-        
-        # Lấy mô tả sản phẩm
-        try:
-            description_element = driver.find_element(By.ID, "feature-bullets")
-            product["description"] = description_element.text
-        except:
-            product["description"] = "Description not found"
-
-        return product
-    except Exception as e:
-        return {"error": str(e), "title": "Error retrieving product", "price": "Unknown", "rating": "Not available", "description": "Failed to load product information"}
-    finally:
-        driver.quit()
-        del driver
-        gc.collect()
+            # Bộ từ điển chỉ chứa thông tin cơ bản
+            product = {}
+            
+            # Thêm WebDriverWait để đảm bảo các element đã load
+            wait = WebDriverWait(driver, 15)  # Tăng timeout lên 15 giây
+            
+            # Lấy tiêu đề sản phẩm
+            try:
+                title_element = wait.until(EC.presence_of_element_located((By.ID, "productTitle")))
+                product["title"] = title_element.text.strip()
+                print(f"Found title: {product['title'][:30]}...")
+            except Exception as e:
+                print(f"Title error: {e}")
+                product["title"] = "Title not found"
+            
+            # Lấy giá sản phẩm với wait
+            try:
+                price_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".a-offscreen")))
+                product["price"] = price_element.get_attribute("innerText")
+                print(f"Found price: {product['price']}")
+            except Exception as e:
+                print(f"Price error: {e}")
+                product["price"] = "Price not found"
+            
+            # Các phần còn lại tương tự...
+            
+            # Kiểm tra xem đã lấy được thông tin cơ bản chưa
+            if product.get("title") != "Title not found":
+                print("Successfully retrieved basic product info")
+                return product
+                
+            # Nếu attempt đầu tiên không thành công, thử lần nữa
+            if attempt < max_retries - 1:
+                print("First attempt failed, will retry...")
+                time.sleep(2)  # Đợi trước khi thử lại
+                
+        except Exception as e:
+            print(f"Error in get_basic_product_info (attempt {attempt+1}): {str(e)}")
+            if attempt < max_retries - 1:
+                print("Retrying after error...")
+                time.sleep(2)
+        finally:
+            if driver:
+                driver.quit()
+                del driver
+                gc.collect()
+    
+    return {"error": "Failed after retries", "title": "Error retrieving product", "price": "Unknown", 
+            "rating": "Not available", "description": "Failed to load product information"}
