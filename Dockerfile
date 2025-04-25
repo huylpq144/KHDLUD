@@ -31,19 +31,15 @@ RUN apt-get update && apt-get install -y \
     libvulkan1 \
     xvfb
 
-# Cài đặt Chrome
+# Sử dụng phiên bản Chrome cụ thể (114.0.5735.90) và ChromeDriver tương ứng
 RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
     && echo "deb http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list \
     && apt-get update \
     && apt-get install -y google-chrome-stable \
     && rm -rf /var/lib/apt/lists/*
 
-# Xác định phiên bản Chrome đã được cài đặt
-RUN CHROMEVER=$(google-chrome --product-version | grep -o "[^\.]*\.[^\.]*\.[^\.]*") \
-    && echo "Chrome version: $CHROMEVER" \
-    && DRIVERVER=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROMEVER") \
-    && echo "ChromeDriver version: $DRIVERVER" \
-    && wget -q "https://chromedriver.storage.googleapis.com/$DRIVERVER/chromedriver_linux64.zip" \
+# Cài đặt ChromeDriver 114.0.5735.90 (phiên bản cũ nhưng ổn định và tương thích)
+RUN wget -q "https://chromedriver.storage.googleapis.com/114.0.5735.90/chromedriver_linux64.zip" \
     && unzip chromedriver_linux64.zip \
     && mv chromedriver /usr/bin/chromedriver \
     && chmod +x /usr/bin/chromedriver \
