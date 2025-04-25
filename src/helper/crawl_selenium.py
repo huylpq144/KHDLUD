@@ -4,6 +4,7 @@ import re
 import json
 import time
 import random
+import os
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -21,6 +22,57 @@ HEADERS = {
     'referer': 'https://www.amazon.com/',
     'accept': '*/*'
 }
+
+def extract_product_id(url):
+    """
+    Trích xuất ProductID từ URL Amazon
+    
+    Args:
+        url (str): URL của sản phẩm Amazon
+        
+    Returns:
+        str: ProductID hoặc None nếu không tìm thấy
+    """
+    # Các pattern phổ biến để tìm product ID trong URL Amazon:
+    patterns = [
+        r'/dp/([A-Z0-9]{10})/?',       # /dp/B00EXAMPLE/
+        r'/gp/product/([A-Z0-9]{10})/?',  # /gp/product/B00EXAMPLE/
+        r'/ASIN/([A-Z0-9]{10})/?',     # /ASIN/B00EXAMPLE/
+        r'product/([A-Z0-9]{10})/?',    # product/B00EXAMPLE
+        r'product-reviews/([A-Z0-9]{10})/?'  # product-reviews/B00EXAMPLE/
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match:
+            return match.group(1)
+    
+    return None
+
+def is_product_id_in_list(product_id):
+    """
+    Kiểm tra xem ProductID có trong danh sách unique_product_ids.txt không
+    
+    Args:
+        product_id (str): ID sản phẩm cần kiểm tra
+        
+    Returns:
+        bool: True nếu ID có trong danh sách, False nếu không
+    """
+    if not product_id:
+        return False
+        
+    # Đường dẫn đến file unique_product_ids.txt
+    file_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 
+                           'data', 'unique_product_ids.txt')
+    
+    try:
+        with open(file_path, 'r') as file:
+            product_ids = file.read().splitlines()
+            return product_id in product_ids
+    except Exception as e:
+        print(f"Lỗi khi đọc file unique_product_ids.txt: {str(e)}")
+        return False
 
 def setup_driver(headless=False):  # Changed default to False
     """Setup and return a Chrome webdriver with appropriate options"""
@@ -184,96 +236,60 @@ def get_product_info(url):
         del driver  # Explicitly delete the driver object
         gc.collect()  # Force garbage collection
 
-# def get_reviews(url, num_reviews=10):
-#     """Fetch product reviews from Amazon product page using Selenium"""
-#     driver = setup_driver()
-#     try:
-#         # First navigate to product page
-#         driver.get(url)
-#         time.sleep(random.uniform(2, 4))
+def get_basic_product_info(url):
+    """Extract only basic product information (title, price, rating, description) from an Amazon product page"""
+    driver = setup_driver(headless=True)
+    try:
+        driver.get(url)
+        time.sleep(random.uniform(2, 4))  # Giảm thời gian chờ
         
-#         # Check for robot check
-#         if "robot" in driver.page_source.lower() or "captcha" in driver.page_source.lower():
-#             return {"error": "Robot check detected on product page"}
-        
-#         # Try to find and click on "See all reviews" link
-#         try:
-#             reviews_link = driver.find_element(By.CSS_SELECTOR, "a[data-hook='see-all-reviews-link-foot']")
-#             reviews_link.click()
-#             time.sleep(random.uniform(3, 5))
-#         except:
-#             # If not found, try to construct the reviews URL
-#             # Extract product ID from URL
-#             product_id_match = re.search(r"/dp/([^/]+)", url)
-#             if product_id_match:
-#                 product_id = product_id_match.group(1)
-#                 reviews_url = f"https://www.amazon.com/product-reviews/{product_id}"
-#                 driver.get(reviews_url)
-#                 time.sleep(random.uniform(3, 5))
-        
-#         reviews_list = []
-#         page_num = 1
-        
-#         while len(reviews_list) < num_reviews and page_num <= 5:  # Limit to 5 pages
-#             # Check for robot check on reviews page
-#             if "robot" in driver.page_source.lower() or "captcha" in driver.page_source.lower():
-#                 break
-                
-#             # Parse reviews on current page
-#             soup = BeautifulSoup(driver.page_source, 'html.parser')
-#             review_elements = soup.find_all("div", attrs={'data-hook': 'review'})
-            
-#             for review in review_elements:
-#                 if len(reviews_list) >= num_reviews:
-#                     break
-                    
-#                 review_dict = {}
-                
-#                 # Get review title
-#                 title_element = review.find("a", attrs={'data-hook': 'review-title'})
-#                 if not title_element:
-#                     title_element = review.find("span", attrs={'data-hook': 'review-title'})
-#                 review_dict["title"] = title_element.text.strip() if title_element else "No title"
-                
-#                 # Get review rating
-#                 rating_element = review.find("i", attrs={'data-hook': 'review-star-rating'})
-#                 if not rating_element:
-#                     rating_element = review.find("i", attrs={'data-hook': 'cmps-review-star-rating'})
-#                 review_dict["rating"] = rating_element.text.strip() if rating_element else "No rating"
-                
-#                 # Get review text
-#                 body_element = review.find("span", attrs={'data-hook': 'review-body'})
-#                 review_dict["text"] = body_element.text.strip() if body_element else "No review text"
-                
-#                 # Get review author
-#                 author_element = review.find("span", attrs={'class': 'a-profile-name'})
-#                 review_dict["author"] = author_element.text.strip() if author_element else "Anonymous"
-                
-#                 # Get review date
-#                 date_element = review.find("span", attrs={'data-hook': 'review-date'})
-#                 review_dict["date"] = date_element.text.strip() if date_element else "No date"
-                
-#                 reviews_list.append(review_dict)
-            
-#             # Go to next page if needed
-#             if len(reviews_list) < num_reviews:
-#                 try:
-#                     next_link = driver.find_element(By.CSS_SELECTOR, ".a-pagination .a-last a")
-#                     next_link.click()
-#                     time.sleep(random.uniform(3, 5))
-#                     page_num += 1
-#                 except:
-#                     break
-        
-#         return reviews_list
-#     except Exception as e:
-#         return {"error": str(e)}
-#     finally:
-#         driver.quit()
+        # Xử lý CAPTCHA nếu xuất hiện
+        if solve_captcha(driver):
+            print("🔄 Continuing after captcha solution...")
+            time.sleep(2)
 
-# if __name__ == "__main__":
-#     # Test the functions
-#     product_url = "https://www.amazon.com/SAMSUNG-Smartphone-Processor-ProScaler-Manufacturer/dp/B0DP3DFMHB/"
-#     # product_url = "https://www.amazon.com/CHEF-iQ-Thermometer-Ultra-Thin-Monitoring/dp/B0C7JNJW2N/"
-#     result = get_product_info(product_url)
-#     print(result["reviews"][-1].get("text", "No review text"))
+        # Bộ từ điển chỉ chứa thông tin cơ bản
+        product = {}
+        
+        # Lấy tiêu đề sản phẩm
+        try:
+            title_element = driver.find_element(By.ID, "productTitle")
+            product["title"] = title_element.text.strip()
+        except:
+            product["title"] = "Title not found"
+        
+        # Lấy giá sản phẩm
+        try:
+            price_element = driver.find_element(By.CSS_SELECTOR, ".a-offscreen")
+            product["price"] = price_element.get_attribute("innerText")
+        except:
+            product["price"] = "Price not found"
+        
+        # Lấy đánh giá trung bình
+        try:
+            rating_element = driver.find_element(By.CSS_SELECTOR, ".a-icon-alt")
+            product["rating"] = rating_element.get_attribute("innerText")
+        except:
+            product["rating"] = "Rating not found"
+        
+        # Lấy số lượng đánh giá
+        try:
+            review_count_element = driver.find_element(By.ID, "acrCustomerReviewText")
+            product["review_count"] = review_count_element.text
+        except:
+            product["review_count"] = "Review count not found"
+        
+        # Lấy mô tả sản phẩm
+        try:
+            description_element = driver.find_element(By.ID, "feature-bullets")
+            product["description"] = description_element.text
+        except:
+            product["description"] = "Description not found"
+
+        return product
+    except Exception as e:
+        return {"error": str(e), "title": "Error retrieving product", "price": "Unknown", "rating": "Not available", "description": "Failed to load product information"}
+    finally:
+        driver.quit()
+        del driver
+        gc.collect()
