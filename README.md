@@ -18,7 +18,7 @@ The **Amazon Chatbot** is a smart solution designed to help users quickly review
 ## Video Guide
 To learn how to use the Amazon Chatbot, watch the step-by-step video guide here:
 
-[Watch the video guide](https://studenthcmusedu-my.sharepoint.com/personal/21127616_student_hcmus_edu_vn/_layouts/15/stream.aspx?id=%2Fpersonal%2F21127616%5Fstudent%5Fhcmus%5Fedu%5Fvn%2FDocuments%2FHocTap%2FKhoa%20h%E1%BB%8Dc%20D%E1%BB%AF%20li%E1%BB%87u%20%E1%BB%99ng%20d%E1%BB%A5ng%2FKHDLUD%2Emkv&referrer=StreamWebApp%2EWeb&referrerScenario=AddressBarCopied%2Eview%2Eb6b4dc37%2Dc20c%2D4109%2Db282%2Dd30f616e44ba)
+[Watch the video guide](https://studenthcmusedu-my.sharepoint.com/:f:/g/personal/21127616_student_hcmus_edu_vn/Emyyjn0PGKtHidtIMXZ38tgBtyc7upnt-XJAQvP7_ip35Q?e=AT9Iob)
 
 ## Live Deployment
 You can interact with the deployed version of the **Amazon Chatbot** at the following link:
