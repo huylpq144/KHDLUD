@@ -24,6 +24,7 @@ To learn how to use the Amazon Chatbot, watch the step-by-step video guide here:
 You can interact with the deployed version of the **Amazon Chatbot** at the following link:
 
 [Amazon Chatbot - Live Deployment](https://khdlud-684432473097.us-central1.run.app/)
+
 ![image](https://github.com/user-attachments/assets/7e022c56-78f5-46b6-b661-c3f2d7a7d2ec)
 
 
